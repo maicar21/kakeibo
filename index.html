@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="家計簿">
+<meta name="theme-color" content="#FBF9F4">
+<link rel="apple-touch-icon" href="icon.png">
+<title>わたしの家計簿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Kiwi+Maru:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FBF9F4;
+    --grid: rgba(43, 58, 85, 0.07);
+    --ink: #2B3A55;
+    --ink-soft: #6B7690;
+    --shu: #D9553B;
+    --marker: #FFE773;
+    --tag-bg: #EEF1F6;
+    --card: #FFFFFF;
+    --line: #E3DFD5;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+    color: var(--ink);
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 22px 22px;
+    min-height: 100vh;
+    padding: 20px 14px 80px;
+  }
+  .app { max-width: 560px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 18px; }
+  header h1 {
+    font-family: "Kiwi Maru", serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    display: inline-block;
+    background: linear-gradient(transparent 62%, var(--marker) 62%, var(--marker) 92%, transparent 92%);
+    padding: 0 6px;
+  }
+
+  .month-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 14px; }
+  .month-nav button {
+    border: 1.5px solid var(--ink); background: var(--card); color: var(--ink);
+    width: 34px; height: 34px; border-radius: 50%;
+    font-size: 1rem; cursor: pointer; font-family: inherit; transition: background .15s;
+  }
+  .month-nav button:hover { background: var(--marker); }
+  .month-nav h2 {
+    font-family: "Kiwi Maru", serif; font-size: 1.15rem; font-weight: 500;
+    letter-spacing: 0.08em; min-width: 150px; text-align: center;
+  }
+
+  .total-card {
+    background: var(--card); border: 1.5px solid var(--ink); border-radius: var(--radius);
+    padding: 16px 18px 14px; margin-bottom: 14px;
+    box-shadow: 3px 3px 0 rgba(43,58,85,0.12);
+  }
+  .total-card .label { font-size: 0.75rem; color: var(--ink-soft); letter-spacing: 0.1em; }
+  .total-card .amount {
+    font-size: 1.9rem; font-weight: 700; color: var(--shu);
+    letter-spacing: 0.02em; margin-top: 2px; font-variant-numeric: tabular-nums;
+  }
+  .total-card .amount small { font-size: 1rem; margin-right: 2px; }
+  .total-card .count { font-size: 0.72rem; color: var(--ink-soft); margin-top: 4px; }
+  .total-card .fixed-line {
+    font-size: 0.75rem; color: var(--ink-soft); margin-top: 6px;
+    border-top: 1px dashed var(--line); padding-top: 6px; font-variant-numeric: tabular-nums;
+  }
+  .total-card .fixed-line b { color: var(--ink); }
+
+  .breakdown { margin-top: 12px; display: none; }
+  .breakdown.show { display: block; }
+  .breakdown .row { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 0.78rem; }
+  .breakdown .cat-name { width: 5.5em; flex-shrink: 0; }
+  .breakdown .bar-wrap { flex: 1; background: var(--tag-bg); border-radius: 4px; height: 12px; overflow: hidden; }
+  .breakdown .bar { height: 100%; background: var(--ink); border-radius: 4px; opacity: 0.85; }
+  .breakdown .cat-amount { width: 6em; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .toggle-breakdown {
+    margin-top: 10px; background: none; border: none; color: var(--ink-soft);
+    font-size: 0.72rem; cursor: pointer; font-family: inherit; text-decoration: underline;
+  }
+
+  /* 入金予定カード */
+  .sched-card {
+    background: #FFFDF3;
+    border: 1.5px solid var(--ink); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 14px;
+    box-shadow: 3px 3px 0 rgba(43,58,85,0.12);
+  }
+  .sched-card h3 { font-size: 0.85rem; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .sched-topline { font-size: 0.75rem; color: var(--ink-soft); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+  .sched-topline b { color: var(--shu); font-size: 0.9rem; }
+  .acct-group { margin-bottom: 12px; }
+  .acct-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.8rem; font-weight: 700;
+    border-bottom: 1.5px solid var(--ink); padding-bottom: 3px; margin-bottom: 6px;
+  }
+  .acct-head .acct-total { font-variant-numeric: tabular-nums; color: var(--shu); }
+  .sched-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 0.8rem; }
+  .sched-row + .sched-row { border-top: 1px dashed var(--line); }
+  .sched-date {
+    background: var(--ink); color: #fff; border-radius: 4px;
+    font-size: 0.68rem; padding: 3px 6px; flex-shrink: 0; letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .sched-row.overdue .sched-date { background: var(--shu); }
+  .sched-label { flex: 1; overflow: hidden; }
+  .sched-label .sub { display: block; font-size: 0.66rem; color: var(--ink-soft); }
+  .sched-amt { font-variant-numeric: tabular-nums; font-weight: 500; flex-shrink: 0; }
+  .sched-empty { font-size: 0.78rem; color: var(--ink-soft); padding: 6px 0; line-height: 1.8; }
+
+  .entry-form {
+    background: var(--card); border: 1.5px dashed var(--ink-soft); border-radius: var(--radius);
+    padding: 14px; margin-bottom: 18px;
+  }
+  .entry-form h3 { font-size: 0.85rem; margin-bottom: 10px; letter-spacing: 0.08em; }
+  .form-label { font-size: 0.68rem; color: var(--ink-soft); margin: 8px 0 5px; letter-spacing: 0.05em; }
+  .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .entry-form input, .entry-form select,
+  .settings input, .settings select {
+    font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 9px 10px; background: var(--paper); width: 100%;
+  }
+  .entry-form input:focus, .entry-form select:focus,
+  .settings input:focus, .settings select:focus {
+    outline: 2px solid var(--marker); border-color: var(--ink);
+  }
+  #amount { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--tag-bg); color: var(--ink);
+    border-radius: 999px; padding: 5px 12px; font-size: 0.78rem;
+    cursor: pointer; font-family: inherit; transition: all .12s;
+  }
+  .chip.selected { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .chip.add-cat { background: none; border-style: dashed; color: var(--ink-soft); }
+  .chip.pay-card.selected { background: var(--shu); border-color: var(--shu); }
+
+  .form-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-save {
+    flex: 1; background: var(--shu); color: #fff; border: none;
+    border-radius: 6px; padding: 11px; font-size: 0.95rem; font-weight: 700;
+    font-family: inherit; cursor: pointer; letter-spacing: 0.15em;
+    box-shadow: 2px 2px 0 rgba(43,58,85,0.2);
+  }
+  .btn-save:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 rgba(43,58,85,0.2); }
+  .btn-cancel {
+    background: none; border: 1px solid var(--line); border-radius: 6px;
+    padding: 11px 14px; font-family: inherit; color: var(--ink-soft);
+    cursor: pointer; display: none;
+  }
+  .btn-cancel.show { display: block; }
+
+  .day-group { margin-bottom: 14px; }
+  .day-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.78rem; color: var(--ink-soft);
+    border-bottom: 1.5px solid var(--ink); padding-bottom: 3px; margin-bottom: 6px;
+    letter-spacing: 0.05em;
+  }
+  .day-head .day-total { font-variant-numeric: tabular-nums; }
+  .item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
+    cursor: pointer; transition: border-color .12s;
+  }
+  .item:hover { border-color: var(--ink); }
+  .item .tag {
+    background: var(--tag-bg); border-radius: 4px; padding: 3px 8px;
+    font-size: 0.7rem; flex-shrink: 0; letter-spacing: 0.03em;
+  }
+  .item .tag.pay {
+    background: none; border: 1px solid var(--line); color: var(--ink-soft);
+    max-width: 7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .item .memo { flex: 1; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .memo.empty { color: var(--ink-soft); font-size: 0.78rem; }
+  .item .price { font-variant-numeric: tabular-nums; font-size: 0.92rem; font-weight: 500; flex-shrink: 0; }
+  .item .del {
+    background: none; border: none; color: var(--ink-soft); cursor: pointer;
+    font-size: 1rem; padding: 2px 4px; flex-shrink: 0; font-family: inherit;
+  }
+  .item .del:hover { color: var(--shu); }
+
+  .empty-state {
+    text-align: center; color: var(--ink-soft); font-size: 0.85rem;
+    padding: 40px 0 30px; line-height: 1.9;
+  }
+
+  /* 設定 */
+  .settings {
+    background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius);
+    margin-bottom: 18px;
+  }
+  .settings summary {
+    padding: 12px 14px; font-size: 0.85rem; cursor: pointer; letter-spacing: 0.05em;
+    list-style: none; user-select: none;
+  }
+  .settings summary::-webkit-details-marker { display: none; }
+  .settings summary::before { content: "▸ "; }
+  .settings[open] summary::before { content: "▾ "; }
+  .settings .inner { padding: 0 14px 14px; }
+  .settings h4 {
+    font-size: 0.78rem; margin: 14px 0 8px; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--line); padding-bottom: 4px;
+  }
+  .settings h4:first-child { margin-top: 4px; }
+  .set-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+    padding: 8px 10px; margin-bottom: 6px; font-size: 0.78rem;
+  }
+  .set-row .main { flex: 1; }
+  .set-row .sub { display: block; font-size: 0.66rem; color: var(--ink-soft); margin-top: 1px; }
+  .set-row .del {
+    background: none; border: none; color: var(--ink-soft); cursor: pointer;
+    font-size: 0.95rem; font-family: inherit;
+  }
+  .set-row .del:hover { color: var(--shu); }
+  .set-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .set-form .full { grid-column: 1 / -1; }
+  .set-form input, .set-form select { font-size: 0.82rem; padding: 8px; }
+  .btn-add {
+    grid-column: 1 / -1;
+    background: var(--ink); color: #fff; border: none; border-radius: 6px;
+    padding: 9px; font-family: inherit; font-size: 0.82rem; cursor: pointer;
+    letter-spacing: 0.1em;
+  }
+  .set-note { font-size: 0.68rem; color: var(--ink-soft); margin-top: 6px; line-height: 1.7; }
+
+  footer { text-align: center; margin-top: 30px; }
+  footer button {
+    background: none; border: 1px solid var(--line); border-radius: 6px;
+    color: var(--ink-soft); font-size: 0.72rem; font-family: inherit;
+    padding: 7px 14px; cursor: pointer;
+  }
+  footer button:hover { border-color: var(--ink); color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header><h1>わたしの家計簿</h1></header>
+
+  <div class="month-nav">
+    <button id="prevMonth" aria-label="前の月">‹</button>
+    <h2 id="monthLabel"></h2>
+    <button id="nextMonth" aria-label="次の月">›</button>
+  </div>
+
+  <div class="total-card">
+    <div class="label">この月の支出合計(記帳分)</div>
+    <div class="amount"><small>¥</small><span id="monthTotal">0</span></div>
+    <div class="count" id="monthCount"></div>
+    <div class="fixed-line" id="fixedLine" style="display:none"></div>
+    <button class="toggle-breakdown" id="toggleBreakdown">カテゴリ別の内訳を見る ▾</button>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+
+  <div class="sched-card">
+    <h3>🏦 この月の引き落とし予定</h3>
+    <div class="sched-topline" id="schedTopline"></div>
+    <div id="schedule"></div>
+  </div>
+
+  <div class="entry-form">
+    <h3 id="formTitle">✎ 支出を記録する</h3>
+    <div class="form-row">
+      <input type="date" id="date">
+      <input type="text" id="amount" inputmode="numeric" placeholder="金額">
+    </div>
+    <div class="form-label">カテゴリ</div>
+    <div class="chips" id="catChips"></div>
+    <div class="form-label">支払い方法</div>
+    <div class="chips" id="payChips"></div>
+    <div class="form-label">メモ</div>
+    <div class="form-row">
+      <input type="text" id="memo" placeholder="お店の名前など">
+    </div>
+    <div class="form-actions">
+      <button class="btn-save" id="saveBtn">記帳する</button>
+      <button class="btn-cancel" id="cancelBtn">やめる</button>
+    </div>
+  </div>
+
+  <details class="settings">
+    <summary>⚙ 口座・カード・口座振替の設定</summary>
+    <div class="inner">
+      <h4>🏦 口座</h4>
+      <div id="acctList"></div>
+      <div class="set-form">
+        <input type="text" id="acctName" class="full" placeholder="口座名(例:楽天銀行、西日本シティ銀行)">
+        <button class="btn-add" id="addAcct">口座を追加する</button>
+      </div>
+      <div class="set-note">先に口座を登録しておくと、下のカードや口座振替で選べるようになります。何個でも登録できます。</div>
+
+      <h4>💳 クレジットカード</h4>
+      <div id="cardList"></div>
+      <div class="set-form">
+        <input type="text" id="cardName" class="full" placeholder="カード名(例:楽天カード)">
+        <select id="cardClose"></select>
+        <select id="cardOffset">
+          <option value="1">翌月払い</option>
+          <option value="2">翌々月払い</option>
+          <option value="0">当月払い</option>
+        </select>
+        <select id="cardPayDay"></select>
+        <select id="cardAccount"></select>
+        <button class="btn-add" id="addCard">カードを追加する</button>
+      </div>
+      <div class="set-note">例:「15日締め・翌月10日払い」→ 締め日15日/翌月払い/支払日10日</div>
+
+      <h4>🔁 口座振替(毎月の固定引き落とし)</h4>
+      <div id="debitList"></div>
+      <div class="set-form">
+        <input type="text" id="debitName" placeholder="名前(例:家賃)">
+        <input type="text" id="debitAmount" inputmode="numeric" placeholder="金額">
+        <select id="debitDay"></select>
+        <select id="debitAccount"></select>
+        <button class="btn-add" id="addDebit">口座振替を追加する</button>
+      </div>
+      <div class="set-note">家賃・保険・サブスクなど、毎月自動で引かれるものを登録すると、引き落とし予定に毎月表示されます。</div>
+    </div>
+  </details>
+
+  <div id="list"></div>
+
+  <footer>
+    <button id="exportCsv">CSVで書き出す(バックアップ用)</button>
+  </footer>
+</div>
+
+<script>
+(function() {
+  const KEY_ENTRIES = 'kakeibo_entries_v2';
+  const KEY_ENTRIES_OLD = 'kakeibo_entries_v1';
+  const KEY_CATS = 'kakeibo_categories_v1';
+  const KEY_CARDS = 'kakeibo_cards_v1';
+  const KEY_DEBITS = 'kakeibo_debits_v1';
+  const KEY_ACCTS = 'kakeibo_accounts_v1';
+  const DEFAULT_CATS = ['食費', '日用品', '交通費', '交際費', '趣味', '美容', 'その他'];
+
+  let entries = load(KEY_ENTRIES, null);
+  if (entries === null) {
+    // 旧バージョンからの引き継ぎ(支払い方法は現金として取り込み)
+    const old = load(KEY_ENTRIES_OLD, []);
+    entries = old.map(function(e) { e.pay = e.pay || 'cash'; return e; });
+  }
+  let categories = load(KEY_CATS, DEFAULT_CATS);
+  let cards = load(KEY_CARDS, []);
+  let debits = load(KEY_DEBITS, []);
+  let accounts = load(KEY_ACCTS, []);
+  // 旧バージョンで手入力されていた口座名を自動で口座リストに取り込み
+  cards.concat(debits).forEach(function(x) {
+    const name = (x.account || '').trim();
+    if (name && !accounts.some(function(a) { return a.name === name; })) {
+      accounts.push({ id: Date.now() + Math.floor(Math.random() * 1000), name: name });
+    }
+  });
+  let current = firstOfMonth(new Date());
+  let selectedCat = categories[0];
+  let selectedPay = 'cash';
+  let editingId = null;
+
+  function load(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function save() {
+    try {
+      localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries));
+      localStorage.setItem(KEY_CATS, JSON.stringify(categories));
+      localStorage.setItem(KEY_CARDS, JSON.stringify(cards));
+      localStorage.setItem(KEY_DEBITS, JSON.stringify(debits));
+      localStorage.setItem(KEY_ACCTS, JSON.stringify(accounts));
+    } catch (e) {
+      alert('保存に失敗しました。ブラウザの設定でサイトデータが許可されているか確認してください。');
+    }
+  }
+
+  // ---- 日付ユーティリティ ----
+  function firstOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+  function resolveDay(val, y, m) {
+    if (val === 'last') return daysInMonth(y, m);
+    return Math.min(parseInt(val, 10), daysInMonth(y, m));
+  }
+  function ymd(d) {
+    const p = function(n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+  }
+  function yen(n) { return n.toLocaleString('ja-JP'); }
+  const WEEK = ['日','月','火','水','木','金','土'];
+  function mdw(d) { return (d.getMonth()+1) + '/' + d.getDate() + '(' + WEEK[d.getDay()] + ')'; }
+
+  // カード利用日 → 引き落とし日を計算
+  function paymentDateFor(dateStr, card) {
+    const d = new Date(dateStr + 'T00:00');
+    let cy = d.getFullYear(), cm = d.getMonth();
+    const closeDay = resolveDay(card.closeDay, cy, cm);
+    if (d.getDate() > closeDay) { cm++; if (cm > 11) { cm = 0; cy++; } }
+    let py = cy, pm = cm + parseInt(card.offset, 10);
+    while (pm > 11) { pm -= 12; py++; }
+    return new Date(py, pm, resolveDay(card.payDay, py, pm));
+  }
+
+  const $ = function(id) { return document.getElementById(id); };
+
+  function renderAll() {
+    renderMonthLabel();
+    renderCatChips();
+    renderPayChips();
+    renderList();
+    renderSchedule();
+    renderAcctList();
+    renderAcctSelects();
+    renderCardList();
+    renderDebitList();
+  }
+
+  function renderMonthLabel() {
+    $('monthLabel').textContent = current.getFullYear() + '年 ' + (current.getMonth()+1) + '月';
+  }
+
+  // ---- チップ ----
+  function renderCatChips() {
+    const wrap = $('catChips');
+    wrap.innerHTML = '';
+    categories.forEach(function(cat) {
+      const b = document.createElement('button');
+      b.className = 'chip' + (cat === selectedCat ? ' selected' : '');
+      b.textContent = cat;
+      b.onclick = function() { selectedCat = cat; renderCatChips(); };
+      wrap.appendChild(b);
+    });
+    const add = document.createElement('button');
+    add.className = 'chip add-cat';
+    add.textContent = '+ カテゴリ追加';
+    add.onclick = function() {
+      const name = prompt('新しいカテゴリ名を入力してください');
+      if (name && name.trim() && categories.indexOf(name.trim()) === -1) {
+        categories.push(name.trim());
+        selectedCat = name.trim();
+        save();
+        renderCatChips();
+      }
+    };
+    wrap.appendChild(add);
+  }
+
+  function renderPayChips() {
+    const wrap = $('payChips');
+    wrap.innerHTML = '';
+    const opts = [{ key: 'cash', label: '現金' }];
+    cards.forEach(function(c) { opts.push({ key: 'card:' + c.id, label: '💳 ' + c.name, isCard: true }); });
+    if (cards.length === 0) {
+      const hint = document.createElement('span');
+      hint.className = 'set-note';
+      hint.textContent = 'カードを登録すると、ここに支払い方法として表示されます(下の⚙設定から)';
+      wrap.appendChild(makePayChip(opts[0]));
+      wrap.appendChild(hint);
+      return;
+    }
+    opts.forEach(function(o) { wrap.appendChild(makePayChip(o)); });
+  }
+  function makePayChip(o) {
+    const b = document.createElement('button');
+    b.className = 'chip' + (o.isCard ? ' pay-card' : '') + (o.key === selectedPay ? ' selected' : '');
+    b.textContent = o.label;
+    b.onclick = function() { selectedPay = o.key; renderPayChips(); };
+    return b;
+  }
+
+  function payLabel(pay) {
+    if (!pay || pay === 'cash') return '現金';
+    const id = pay.split(':')[1];
+    const card = cards.find(function(c) { return String(c.id) === id; });
+    return card ? card.name : '(削除済カード)';
+  }
+
+  // ---- 一覧 ----
+  function monthEntries() {
+    const y = current.getFullYear(), m = current.getMonth();
+    return entries.filter(function(e) {
+      const d = new Date(e.date + 'T00:00');
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
+  }
+
+  function renderList() {
+    const list = $('list');
+    const es = monthEntries().sort(function(a,b) { return b.date.localeCompare(a.date) || b.id - a.id; });
+    const total = es.reduce(function(s,e) { return s + e.amount; }, 0);
+    $('monthTotal').textContent = yen(total);
+    $('monthCount').textContent = es.length ? es.length + ' 件の記録' : '';
+
+    const debitTotal = debits.reduce(function(s,d) { return s + d.amount; }, 0);
+    const fl = $('fixedLine');
+    if (debitTotal > 0) {
+      fl.style.display = 'block';
+      fl.innerHTML = '+ 口座振替(毎月)¥' + yen(debitTotal) +
+        ' → 合わせて <b>¥' + yen(total + debitTotal) + '</b>';
+    } else {
+      fl.style.display = 'none';
+    }
+
+    renderBreakdown(es, total);
+
+    list.innerHTML = '';
+    if (!es.length) {
+      list.innerHTML = '<div class="empty-state">この月の記録はまだありません。<br>上のフォームから最初の1件を記帳してみましょう ✎</div>';
+      return;
+    }
+
+    const byDay = {};
+    es.forEach(function(e) { (byDay[e.date] = byDay[e.date] || []).push(e); });
+
+    Object.keys(byDay).sort(function(a,b) { return b.localeCompare(a); }).forEach(function(dateStr) {
+      const d = new Date(dateStr + 'T00:00');
+      const group = document.createElement('div');
+      group.className = 'day-group';
+      const dayTotal = byDay[dateStr].reduce(function(s,e) { return s + e.amount; }, 0);
+      const head = document.createElement('div');
+      head.className = 'day-head';
+      head.innerHTML = '<span>' + mdw(d) + '</span><span class="day-total">¥' + yen(dayTotal) + '</span>';
+      group.appendChild(head);
+
+      byDay[dateStr].forEach(function(e) {
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML =
+          '<span class="tag">' + escapeHtml(e.category) + '</span>' +
+          '<span class="tag pay">' + escapeHtml(payLabel(e.pay)) + '</span>' +
+          '<span class="memo' + (e.memo ? '' : ' empty') + '">' + (e.memo ? escapeHtml(e.memo) : '(メモなし)') + '</span>' +
+          '<span class="price">¥' + yen(e.amount) + '</span>';
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.textContent = '✕';
+        del.setAttribute('aria-label', '削除');
+        del.onclick = function(ev) {
+          ev.stopPropagation();
+          if (confirm('この記録を削除しますか?\n' + e.category + ' ¥' + yen(e.amount))) {
+            entries = entries.filter(function(x) { return x.id !== e.id; });
+            save();
+            renderList();
+            renderSchedule();
+          }
+        };
+        row.appendChild(del);
+        row.onclick = function() { startEdit(e); };
+        group.appendChild(row);
+      });
+      list.appendChild(group);
+    });
+  }
+
+  function renderBreakdown(es, total) {
+    const box = $('breakdown');
+    if (!es.length || !total) { box.innerHTML = ''; return; }
+    const byCat = {};
+    es.forEach(function(e) { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+    const rows = Object.entries(byCat).sort(function(a,b) { return b[1] - a[1]; });
+    box.innerHTML = rows.map(function(r) {
+      return '<div class="row"><span class="cat-name">' + escapeHtml(r[0]) + '</span>' +
+        '<div class="bar-wrap"><div class="bar" style="width:' + Math.round(r[1]/total*100) + '%"></div></div>' +
+        '<span class="cat-amount">¥' + yen(r[1]) + '</span></div>';
+    }).join('');
+  }
+
+  // ---- 引き落とし予定 ----
+  function renderSchedule() {
+    const y = current.getFullYear(), m = current.getMonth();
+    const rows = [];
+
+    cards.forEach(function(card) {
+      let sum = 0, count = 0;
+      entries.forEach(function(e) {
+        if (e.pay === 'card:' + card.id) {
+          const pd = paymentDateFor(e.date, card);
+          if (pd.getFullYear() === y && pd.getMonth() === m) { sum += e.amount; count++; }
+        }
+      });
+      if (sum > 0) {
+        rows.push({
+          date: new Date(y, m, resolveDay(card.payDay, y, m)),
+          label: '💳 ' + card.name,
+          sub: 'カード利用 ' + count + '件分',
+          amount: sum,
+          account: card.account || '(口座未設定)'
+        });
+      }
+    });
+
+    debits.forEach(function(db) {
+      rows.push({
+        date: new Date(y, m, resolveDay(db.day, y, m)),
+        label: '🔁 ' + db.name,
+        sub: '口座振替',
+        amount: db.amount,
+        account: db.account || '(口座未設定)'
+      });
+    });
+
+    const box = $('schedule');
+    const topline = $('schedTopline');
+    if (!rows.length) {
+      topline.textContent = '';
+      box.innerHTML = '<div class="sched-empty">この月の引き落とし予定はありません。<br>⚙設定でカードや口座振替を登録し、カード払いで記帳すると自動で表示されます。</div>';
+      return;
+    }
+
+    const grandTotal = rows.reduce(function(s,r) { return s + r.amount; }, 0);
+    topline.innerHTML = '用意しておくお金の合計:<b>¥' + yen(grandTotal) + '</b>';
+
+    // 口座ごとにグループ化
+    const byAcct = {};
+    rows.forEach(function(r) { (byAcct[r.account] = byAcct[r.account] || []).push(r); });
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    box.innerHTML = '';
+    Object.keys(byAcct).sort().forEach(function(acct) {
+      const rs = byAcct[acct].sort(function(a,b) { return a.date - b.date; });
+      const acctTotal = rs.reduce(function(s,r) { return s + r.amount; }, 0);
+      const g = document.createElement('div');
+      g.className = 'acct-group';
+      const lastDate = rs[rs.length - 1].date;
+      g.innerHTML = '<div class="acct-head"><span>🏦 ' + escapeHtml(acct) +
+        '</span><span class="acct-total">合計 ¥' + yen(acctTotal) + '</span></div>';
+      rs.forEach(function(r) {
+        const row = document.createElement('div');
+        row.className = 'sched-row' + (r.date < today ? ' overdue' : '');
+        row.innerHTML =
+          '<span class="sched-date">' + mdw(r.date) + 'までに</span>' +
+          '<span class="sched-label">' + escapeHtml(r.label) +
+          '<span class="sub">' + escapeHtml(r.sub) + '</span></span>' +
+          '<span class="sched-amt">¥' + yen(r.amount) + '</span>';
+        g.appendChild(row);
+      });
+      const note = document.createElement('div');
+      note.className = 'set-note';
+      note.textContent = '→ ' + mdw(lastDate) + ' までに合計 ¥' + yen(acctTotal) + ' をこの口座に';
+      g.appendChild(note);
+      box.appendChild(g);
+    });
+  }
+
+  // ---- 設定:口座 ----
+  function acctUsage(name) {
+    const c = cards.filter(function(x) { return (x.account || '') === name; }).length;
+    const d = debits.filter(function(x) { return (x.account || '') === name; }).length;
+    const parts = [];
+    if (c) parts.push('カード' + c + '枚');
+    if (d) parts.push('口座振替' + d + '件');
+    return parts.length ? parts.join('・') + 'で使用中' : '未使用';
+  }
+
+  function renderAcctList() {
+    const box = $('acctList');
+    box.innerHTML = '';
+    if (!accounts.length) {
+      box.innerHTML = '<div class="set-note">まだ口座が登録されていません。</div>';
+      return;
+    }
+    accounts.forEach(function(a) {
+      const row = document.createElement('div');
+      row.className = 'set-row';
+      row.innerHTML = '<span class="main">🏦 ' + escapeHtml(a.name) +
+        '<span class="sub">' + escapeHtml(acctUsage(a.name)) + '</span></span>';
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '✕';
+      del.onclick = function() {
+        const usage = acctUsage(a.name);
+        const msg = usage === '未使用'
+          ? '「' + a.name + '」を削除しますか?'
+          : '「' + a.name + '」は' + usage + 'です。\n削除しても設定済みのカード・口座振替の口座名はそのまま残ります。削除しますか?';
+        if (confirm(msg)) {
+          accounts = accounts.filter(function(x) { return x.id !== a.id; });
+          save();
+          renderAll();
+        }
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  function renderAcctSelects() {
+    ['cardAccount', 'debitAccount'].forEach(function(id) {
+      const sel = $(id);
+      const prev = sel.value;
+      sel.innerHTML = '';
+      const def = document.createElement('option');
+      def.value = '';
+      def.textContent = accounts.length ? '引き落とし口座を選ぶ' : '口座未設定(上で口座を登録)';
+      sel.appendChild(def);
+      accounts.forEach(function(a) {
+        const o = document.createElement('option');
+        o.value = a.name;
+        o.textContent = a.name;
+        sel.appendChild(o);
+      });
+      if (prev && accounts.some(function(a) { return a.name === prev; })) sel.value = prev;
+    });
+  }
+
+  $('addAcct').onclick = function() {
+    const name = $('acctName').value.trim();
+    if (!name) { alert('口座名を入力してください'); return; }
+    if (accounts.some(function(a) { return a.name === name; })) {
+      alert('同じ名前の口座がすでに登録されています');
+      return;
+    }
+    accounts.push({ id: Date.now(), name: name });
+    $('acctName').value = '';
+    save();
+    renderAll();
+  };
+  $('acctName').addEventListener('keydown', function(e) { if (e.key === 'Enter') $('addAcct').click(); });
+
+  // ---- 設定:カード ----
+  function fillDaySelect(sel, includeLast, labelSuffix) {
+    sel.innerHTML = '';
+    for (let i = 1; i <= 28; i++) {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = i + labelSuffix;
+      sel.appendChild(o);
+    }
+    if (includeLast) {
+      const o = document.createElement('option');
+      o.value = 'last';
+      o.textContent = '月末' + labelSuffix;
+      sel.appendChild(o);
+    }
+  }
+
+  function cardDesc(c) {
+    const closeTxt = c.closeDay === 'last' ? '月末' : c.closeDay + '日';
+    const offsetTxt = ['当月', '翌月', '翌々月'][parseInt(c.offset, 10)];
+    const payTxt = c.payDay === 'last' ? '月末' : c.payDay + '日';
+    return closeTxt + '締め・' + offsetTxt + payTxt + '払い → ' + (c.account || '口座未設定');
+  }
+
+  function renderCardList() {
+    const box = $('cardList');
+    box.innerHTML = '';
+    if (!cards.length) {
+      box.innerHTML = '<div class="set-note">まだカードが登録されていません。</div>';
+      return;
+    }
+    cards.forEach(function(c) {
+      const row = document.createElement('div');
+      row.className = 'set-row';
+      row.innerHTML = '<span class="main">💳 ' + escapeHtml(c.name) +
+        '<span class="sub">' + escapeHtml(cardDesc(c)) + '</span></span>';
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '✕';
+      del.onclick = function() {
+        if (confirm('「' + c.name + '」を削除しますか?\nこのカードで記帳済みの記録は残ります(表示は「削除済カード」になります)。')) {
+          cards = cards.filter(function(x) { return x.id !== c.id; });
+          if (selectedPay === 'card:' + c.id) selectedPay = 'cash';
+          save();
+          renderAll();
+        }
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  $('addCard').onclick = function() {
+    const name = $('cardName').value.trim();
+    if (!name) { alert('カード名を入力してください'); return; }
+    cards.push({
+      id: Date.now(),
+      name: name,
+      closeDay: $('cardClose').value,
+      offset: $('cardOffset').value,
+      payDay: $('cardPayDay').value,
+      account: $('cardAccount').value.trim()
+    });
+    $('cardName').value = '';
+    $('cardAccount').value = '';
+    save();
+    renderAll();
+  };
+
+  // ---- 設定:口座振替 ----
+  function renderDebitList() {
+    const box = $('debitList');
+    box.innerHTML = '';
+    if (!debits.length) {
+      box.innerHTML = '<div class="set-note">まだ口座振替が登録されていません。</div>';
+      return;
+    }
+    debits.forEach(function(db) {
+      const dayTxt = db.day === 'last' ? '月末' : db.day + '日';
+      const row = document.createElement('div');
+      row.className = 'set-row';
+      row.innerHTML = '<span class="main">🔁 ' + escapeHtml(db.name) + ' ¥' + yen(db.amount) +
+        '<span class="sub">毎月' + dayTxt + ' → ' + escapeHtml(db.account || '口座未設定') + '</span></span>';
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '✕';
+      del.onclick = function() {
+        if (confirm('「' + db.name + '」を削除しますか?')) {
+          debits = debits.filter(function(x) { return x.id !== db.id; });
+          save();
+          renderAll();
+        }
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  $('addDebit').onclick = function() {
+    const name = $('debitName').value.trim();
+    const amount = parseInt(String($('debitAmount').value).replace(/[,、\s円¥]/g, ''), 10);
+    if (!name) { alert('名前を入力してください'); return; }
+    if (!amount || amount <= 0) { alert('金額を正しく入力してください'); return; }
+    debits.push({
+      id: Date.now(),
+      name: name,
+      amount: amount,
+      day: $('debitDay').value,
+      account: $('debitAccount').value.trim()
+    });
+    $('debitName').value = '';
+    $('debitAmount').value = '';
+    $('debitAccount').value = '';
+    save();
+    renderAll();
+  };
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  // ---- 記帳フォーム ----
+  function resetForm() {
+    $('date').value = ymd(new Date());
+    $('amount').value = '';
+    $('memo').value = '';
+    editingId = null;
+    $('formTitle').textContent = '✎ 支出を記録する';
+    $('saveBtn').textContent = '記帳する';
+    $('cancelBtn').classList.remove('show');
+  }
+
+  function startEdit(e) {
+    editingId = e.id;
+    $('date').value = e.date;
+    $('amount').value = e.amount;
+    $('memo').value = e.memo || '';
+    selectedCat = e.category;
+    if (categories.indexOf(e.category) === -1) categories.push(e.category);
+    selectedPay = e.pay || 'cash';
+    if (selectedPay !== 'cash') {
+      const id = selectedPay.split(':')[1];
+      if (!cards.find(function(c) { return String(c.id) === id; })) selectedPay = 'cash';
+    }
+    renderCatChips();
+    renderPayChips();
+    $('formTitle').textContent = '✎ 記録を編集中';
+    $('saveBtn').textContent = '上書き保存';
+    $('cancelBtn').classList.add('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  $('saveBtn').onclick = function() {
+    const date = $('date').value;
+    const amount = parseInt(String($('amount').value).replace(/[,、\s円¥]/g, ''), 10);
+    if (!date) { alert('日付を入力してください'); return; }
+    if (!amount || amount <= 0) { alert('金額を正しく入力してください'); $('amount').focus(); return; }
+    const memo = $('memo').value.trim();
+
+    if (editingId !== null) {
+      const e = entries.find(function(x) { return x.id === editingId; });
+      if (e) { e.date = date; e.amount = amount; e.category = selectedCat; e.memo = memo; e.pay = selectedPay; }
+    } else {
+      entries.push({ id: Date.now(), date: date, amount: amount, category: selectedCat, memo: memo, pay: selectedPay });
+    }
+    save();
+    const d = new Date(date + 'T00:00');
+    current = firstOfMonth(d);
+    resetForm();
+    renderAll();
+  };
+
+  $('cancelBtn').onclick = function() { resetForm(); };
+  $('amount').addEventListener('keydown', function(e) { if (e.key === 'Enter') $('saveBtn').click(); });
+  $('memo').addEventListener('keydown', function(e) { if (e.key === 'Enter') $('saveBtn').click(); });
+
+  $('prevMonth').onclick = function() { current = new Date(current.getFullYear(), current.getMonth()-1, 1); renderAll(); };
+  $('nextMonth').onclick = function() { current = new Date(current.getFullYear(), current.getMonth()+1, 1); renderAll(); };
+
+  $('toggleBreakdown').onclick = function() {
+    const box = $('breakdown');
+    const shown = box.classList.toggle('show');
+    $('toggleBreakdown').textContent = shown ? 'カテゴリ別の内訳を閉じる ▴' : 'カテゴリ別の内訳を見る ▾';
+  };
+
+  $('exportCsv').onclick = function() {
+    if (!entries.length) { alert('まだ記録がありません'); return; }
+    const header = '日付,カテゴリ,金額,支払い方法,メモ\n';
+    const body = entries
+      .slice().sort(function(a,b) { return a.date.localeCompare(b.date); })
+      .map(function(e) {
+        return [e.date, e.category, e.amount, payLabel(e.pay),
+          '"' + (e.memo || '').replace(/"/g, '""') + '"'].join(',');
+      })
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + header + body], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '家計簿_' + ymd(new Date()) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // ---- 初期化 ----
+  fillDaySelect($('cardClose'), true, '締め');
+  fillDaySelect($('cardPayDay'), true, '払い');
+  fillDaySelect($('debitDay'), true, '');
+  resetForm();
+  renderAll();
+})();
+</script>
+</body>
+</html>
